@@ -7,6 +7,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Lab 9</title>
 
+  <script src="https://cdn.trackjs.com/agent/v3/latest/t.js"></script>
+  <script>
+    window.TrackJS && TrackJS.install({
+      token: 'b7aad3cc64d8437db3be1c2f1eea1d7a'
+    });
+  </script>
+
   <style>
     button {
       margin: 3px;
@@ -62,9 +69,9 @@
           <option>/</option>
         </select>
         <input name="second-num" id="second-num" />
-        <button id="calculate">Calculate</button>
+        <button id="calculate" type="submit">Calculate</button>
         <br />
-        <output></output>
+        <output id="result"></output>
       </fieldset>
     </form>
 
@@ -88,20 +95,180 @@
   </main>
 
   <script>
-    let form = document.querySelector('form');
-    form.addEventListener('submit', e => {
-      e.preventDefault();
-      let output = document.querySelector('output');
-      let firstNum = document.querySelector('#first-num').value;
-      let secondNum = document.querySelector('#second-num').value;
-      let operator = document.querySelector('#operator').value;
-      output.innerHTML = eval(`${firstNum} ${operator} ${secondNum}`);
+    // --- Custom errors (Step 4) ---
+    class ValidationError extends Error {
+      constructor(message) {
+        super(message);
+        this.name = 'ValidationError';
+      }
+    }
+
+    class DivisionByZeroError extends Error {
+      constructor(message = 'Cannot divide by zero') {
+        super(message);
+        this.name = 'DivisionByZeroError';
+      }
+    }
+
+    // --- Global error handler (Step 5) ---
+    window.onerror = function (message, source, lineno, colno, error) {
+      console.log('[window.onerror] Global error caught:', message, 'at', source + ':' + lineno);
+      return false;
+    };
+
+    window.addEventListener('error', (event) => {
+      console.log('[error event] Global error caught:', event.message);
     });
 
-    let errorBtns = Array.from(document.querySelectorAll('#error-btns > button'));
+    // --- Calculator with try / catch / finally (Step 3) ---
+    const form = document.querySelector('form');
+    const output = document.querySelector('#result');
 
-    // Start your code here
-    // You may move this JS to another file if you wish
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+
+      try {
+        const firstRaw = document.querySelector('#first-num').value;
+        const secondRaw = document.querySelector('#second-num').value;
+        const operator = document.querySelector('#operator').value;
+
+        if (firstRaw === '' || secondRaw === '') {
+          throw new ValidationError('Both numbers are required.');
+        }
+
+        const firstNum = Number(firstRaw);
+        const secondNum = Number(secondRaw);
+
+        if (Number.isNaN(firstNum) || Number.isNaN(secondNum)) {
+          throw new ValidationError('Please enter valid numbers.');
+        }
+
+        let result;
+        switch (operator) {
+          case '+':
+            result = firstNum + secondNum;
+            break;
+          case '-':
+            result = firstNum - secondNum;
+            break;
+          case '*':
+            result = firstNum * secondNum;
+            break;
+          case '/':
+            if (secondNum === 0) {
+              throw new DivisionByZeroError();
+            }
+            result = firstNum / secondNum;
+            break;
+          default:
+            throw new ValidationError('Unknown operator selected.');
+        }
+
+        // Realistic DOM access: if <output> were commented out in HTML, this would throw.
+        output.textContent = result;
+      } catch (err) {
+        if (err instanceof ValidationError || err instanceof DivisionByZeroError) {
+          console.error(`${err.name}:`, err.message);
+          output.textContent = err.message;
+        } else {
+          console.error('Unexpected error during calculation:', err);
+          output.textContent = 'An unexpected error occurred.';
+          throw err;
+        }
+      } finally {
+        console.log('Calculation attempt finished.');
+      }
+    });
+
+    // --- Console demo data ---
+    const demoObject = {
+      lab: 'Lab 9',
+      topic: 'Error Handling',
+      methods: ['try/catch', 'throw', 'console', 'TrackJS']
+    };
+
+    const demoTable = [
+      { id: 1, name: 'Alice', role: 'student' },
+      { id: 2, name: 'Bob', role: 'ta' },
+      { id: 3, name: 'Carol', role: 'professor' }
+    ];
+
+    let demoCount = 0;
+
+    function traceDemo() {
+      function inner() {
+        console.trace('Console trace demo — call stack:');
+      }
+      inner();
+    }
+
+    function triggerGlobalError() {
+      // Error outside any try/catch block
+      nonExistentGlobalFunction();
+    }
+
+    // --- Console buttons (Step 2) ---
+    const errorBtns = Array.from(document.querySelectorAll('#error-btns > button'));
+
+    errorBtns.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const label = btn.textContent.trim();
+
+        switch (label) {
+          case 'Console Log':
+            console.log('Console log demo:', demoObject);
+            break;
+          case 'Console Error':
+            console.error('Console error demo: something went wrong!');
+            break;
+          case 'Console Count':
+            demoCount += 1;
+            console.count('Button click count');
+            break;
+          case 'Console Warn':
+            console.warn('Console warn demo: this is a warning.');
+            break;
+          case 'Console Assert':
+            console.assert(false, 'Console assert demo: condition was false.');
+            break;
+          case 'Console Clear':
+            console.clear();
+            break;
+          case 'Console Dir':
+            console.dir(demoObject);
+            break;
+          case 'Console dirxml':
+            console.dirxml(document.querySelector('main'));
+            break;
+          case 'Console Group Start':
+            console.group('Calculator debug group');
+            console.log('Group started — nested logs appear indented.');
+            console.log('Current demo object:', demoObject);
+            break;
+          case 'Console Group End':
+            console.groupEnd();
+            break;
+          case 'Console Table':
+            console.table(demoTable);
+            break;
+          case 'Start Timer':
+            console.time('lab9-demo-timer');
+            console.log('Timer started — click End Timer to finish.');
+            break;
+          case 'End Timer':
+            console.timeEnd('lab9-demo-timer');
+            break;
+          case 'Console Trace':
+            traceDemo();
+            break;
+          case 'Trigger a Global Error':
+            triggerGlobalError();
+            break;
+          default:
+            console.warn('No handler for button:', label);
+        }
+      });
+    });
   </script>
 </body>
 
